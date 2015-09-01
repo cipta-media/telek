@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <plugin>
-	<name>telek</name>
-	<alias>lencung</alias>
-	<description>mbuh ya</description>
+	<name>teltree</name>
+	<alias>tlk</alias>
+	<description>plugin sederhana untuk registrasi user dan bergabung ke grup via sms</description>
 	<release>0.1</release>
 	<date>2015-04-02</date>
 	<author>kaka</author>

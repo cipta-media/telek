@@ -64,7 +64,7 @@ function teltree_handle($c_uid, $sms_datetime, $sms_sender, $sms_receiver, $telt
 
 	$ps= explode(" ", $raw_message,2);
 	$kk = strtoupper($ps[0]);
-	$username="admin";
+	
 	if ( $teltree_keyword == 'DAFTAR' ){
 		$pecah= preg_split("/#/", $ps[1], null, PREG_SPLIT_NO_EMPTY );	
 		
