@@ -1,0 +1,235 @@
+<?php
+
+defined('_SECURE_') or die('Forbidden');
+
+/*
+function telek_checkavailablekeyword($keyword){
+	$ok = true;
+        $db_query = "SELECT subscribe_id FROM " . _DB_PREF_ . "_featureSubscribe WHERE subscribe_keyword='$keyword'";
+        if ($db_result = dba_num_rows($db_query)) {
+                $ok = false;
+        }
+        return $ok;
+}
+*/
+
+/*
+ * intercept incoming sms and remove keyword
+ *
+ * @param $sms_datetime
+ *   incoming SMS date/time
+ * @param $sms_sender
+ *   incoming SMS sender
+ * @message
+ *   incoming SMS message before interepted
+ * @param $sms_receiver
+ *   receiver number that is receiving incoming SMS
+ * @return
+ *   array $ret
+ */
+
+
+function teltree_hook_setsmsincomingaction($sms_datetime, $sms_sender, $message, $sms_receiver) {
+        $ok = false;
+       	//$uid = user_mobile2uid($sms_sender);
+	
+
+	// $db_query = "SELECT * FROM " . _DB_PREF_ . "_featureSubscribe WHERE subscribe_keyword='$subscribe_keyword'";
+       // $db_result = dba_query($db_query);
+        //if ($db_row = dba_fetch_array($db_result)) {
+                //if ($db_row['uid'] && $db_row['subscribe_enable']) {
+                  if ($sms_sender && $message) {
+		        _log('begin s:' . $sms_sender . ' m:' . $message, 2, 'teltree');
+                  //      if (sms_subscribe_handle($db_row, $sms_datetime, $sms_sender, $subscribe_keyword, $subscribe_param, $sms_receiver, $smsc, $raw_message)) {
+                                $ok = true;
+                    //    }
+                        $status = ($ok ? 'handled' : 'unhandled');
+                        _log('end s:' . $sms_sender . ' m:' . $message . ' s:' . $status, 2, 'teltree');
+                }
+        //}
+        //$ret['uid'] = user_mobile2uid($sms_sender);
+        $ret['status'] = $ok;
+        return $ret;
+}
+
+
+function teltree_hook_recvsms_intercept($sms_datetime, $sms_sender, $message, $sms_receiver){
+	
+	//$ret = array();
+	
+	$ps= explode(" ", $message,2);
+	$kk = strtoupper($ps[0]);
+	//$pesan = '';1
+	$hooked = false;	
+        $username="admin";
+        $smsc="dev";	//--------------------perlu disesuaikan saat penggantian smsc !!!!!!!!!!
+	if ( $kk == 'DAFTAR' ){
+		$pecah= preg_split("/#/", $ps[1], null, PREG_SPLIT_NO_EMPTY );
+		
+
+		$c_uid = user_mobile2uid($sms_sender);	
+		
+		$data = array();
+		$data['name'] = trim($pecah[0]);
+		$data['username'] = trim($pecah[0]);
+		$data['mobile'] = $sms_sender;
+		$data['email'] = str_replace(' ','',$data['name'])."@noreply.org";
+		$data['parent_uid'] = 1;
+		$data['status'] = 4;
+		
+/*		if($nama && $nohp && $pengguna){
+                logger_print("*******", 3, "telek");
+                logger_print("sms_sender " . $sms_sender, 3, "telek");
+                logger_print("message " . $message, 3, "telek");
+                logger_print("new message " . $nama, 3, "telek");
+                logger_print("sms target user" . $sms_receiver, 3, "telek");
+                logger_print("*******", 3, "telek");
+        
+                if (($uid = user_mobile2uid($sms_sender)) && $nama) {
+                         _log("save in inbox u:" . $username . " uid:" . $uid . " dt:" . $sms_datetime . " s:" . $sms_sender . " r:" . $sms_receiver . " m:[" . $nohp . "]", 3, 'telek');
+                        //recvsms_inbox_add($sms_datetime, $sms_sender, $username, $nama, $sms_receiver);
+                        //$hooked = true;
+                        //$status = ($ok ? 'handled' : 'unhandled');
+                	}
+		 }
+
+*/
+        	$ret = user_add($data);
+        	$ok = ($ret['status'] ? TRUE : FALSE );
+        	if ($ok){
+                	echo "okee";
+                	$items = array(
+                        	'uid' => 1,
+                        	'name' => $data['name'],
+                        	'mobile' => $data['mobile'],
+                        	'email' => $data['email'],
+                        	'tags' => $tags
+                        	);
+                	if ($c_pid = dba_add(_DB_PREF_ . '_featurePhonebook', $items)) {
+                      	    $save_to_group = TRUE;
+			    _log( 'Success to add contact pid:' . $c_pid . ' m:' . $data['mobile'] . ' n:' . $data['name'] . ' e:' . $data['email'] . ' tags:[' . $data['tags'] . ']', 2, 'teltree');
+                   	} else {
+                      	    _log('Fail to add contact pid:' . $c_pid . ' m:' . $data['mobile'] . ' n:' . $data['name'] . ' e:' . $data['email'] . ' tags:[' . $data['tags'] . ']', 2, 'teltree');
+                   	}
+			$balasan = "Selamat anda telah terdaftar di Telephone Tree";
+			$gagal = "Maaf Sistem sedang mengalami gangguan, silahkan coba beberapa saat lagi";
+			if ($save_to_group) {
+                                $unicode = core_detect_unicode($balasan);
+                                $balasan = addslashes($balasan);
+                               // $username = "admin";
+				//$smsc = "dev";
+				_log("returns:".$balasan, 2, "teltree");
+                                sendsms_helper($username, $sms_sender, $balasan, 'text', $unicode, $smsc);
+                        } else {
+				$unicode = core_detect_unicode($gagal);
+                                $balasan = addslashes($gagal);
+                                _log("returns:".$gagal, 2, "teltree");
+                                sendsms_helper($username, $sms_sender, $balasan, 'text', $unicode, $smsc);
+                                _log_print("returns empty", 2, "teltree");
+                        }
+
+        	}else{
+               		 echo "gagal";
+       			 }
+       		
+		return $ret;
+
+
+	} elseif ( $kk == 'GABUNG' ){ 
+		
+		/*$gpids = dba_search(_DB_PREF_ . '_featurePhonebook_group','code',array(
+						
+					));*/
+		$uid = user_mobile2uid($sms_sender);	
+		$group_code = strtoupper($ps[1]);
+		$list = dba_search(_DB_PREF_ . '_featurePhonebook', 'id', array(
+                                                'uid' => 1,
+                                                'mobile' => $sms_sender
+                                        )); 	
+		
+		if($group_code && $sms_sender ){
+			/*--dummy code--*/
+			
+			$c_pid = dba_search(_DB_PREF_ . '_featurePhonebook', 'id', array(
+                                                'uid' => 1,
+                                                'mobile' => $sms_sender
+					));
+			$gpids = dba_search(_DB_PREF_ . '_featurePhonebook_group','id',array(
+                                           	'uid' => 1,
+						'code' => $group_code
+                                        ));
+			foreach($gpids as $gpid){
+				foreach($gpid as $key => $val){
+					
+					$items = array(
+						'gpid' => $val,
+						'pid'  => $c_pid[0]['id']
+						);
+            				if(dba_isavail(_DB_PREF_ . '_featurePhonebook_group_contacts', $items, 'AND')) {
+                                                       if (dba_add(_DB_PREF_ . '_featurePhonebook_group_contacts', $items)) {
+                                                                $list = dba_search(_DB_PREF_ . '_featurePhonebook_group', 'code', array(
+                                                					       'uid' => 1 //---$uid
+                                                				  ));
+								_log('contact added to group gpid:' . $gpid . ' pid:' . $c_pid . ' m:' . $mobile . ' n:' . $name . ' e:' . $email, 2, 'phonebook_edit');
+                                                                if($iid = $c_pid[0]['id']){
+									$bal_grup = "selamat anda telah tergabung di grup".$list[$iid]['code'];
+									$unicode = core_detect_unicode($bal_grup);
+				                                	$bal_grup = addslashes($bal_grup);
+									_log("returns:".$bal_grup, 2, "telek");
+                               						sendsms_helper($username, $sms_sender, $bal_grup, 'text', $unicode, $smsc);
+                                					_log("returns empty", 2, "sms custom");
+									}
+							} else {
+                                                                _log('contact edited but fail to save in group gpid:' . $gpid . ' pid:' . $c_pid . ' m:' . $mobile . ' n:' . $name . ' e:' . $email, 2, 'phonebook_edit');
+                                                        }
+                                                }
+	
+				}
+			}		
+		}
+			
+	} elseif ( $kk == 'KELUAR' ){
+		$uid = user_mobile2uid($sms_sender);
+		$group_code = strtoupper($ps[1]);
+		//_log($sms_sender . ' '. $group_code, 2 , 'test');
+		if($group_code && $sms_sender){
+//		_log($sms_sender . ' '. $group_code, 2 , 'test');
+			$c_pid = dba_search(_DB_PREF_ . '_featurePhonebook','id',array(
+					'uid' => 1,
+					'mobile' => $sms_sender
+				));
+			$gpids = dba_search(_DB_PREF_ . '_featurePhonebook_group','id',array(
+					'uid' => 1,
+					'code' => $group_code
+				));
+			foreach($gpids as $gpid){
+				foreach($gpid as $key => $val){
+					$items = array(
+						 'gpid' => $val,
+						 'pid' => $c_pid[0]['id']
+					);
+//				_log($sms_sender . ' '. $group_code, 2 , 'test');	
+					if(!dba_isavail(_DB_PREF_ . '_featurePhonebook_group_contacts', $items, 'AND')){
+							if(dba_remove(_DB_PREF_ . '_featurePhonebook_group_contacts',$items)){
+								if($iid = $c_pid[0]['id']){
+                                                                        $bal_grup = "anda telah keluar dari grup".$list[$iid]['code'];
+                                                                        $unicode = core_detect_unicode($bal_grup);
+                                                                        $bal_grup = addslashes($bal_grup);
+                                                                        _log("returns:".$bal_grup, 2, "telek");
+                                                                        sendsms_helper($username, $sms_sender, $bal_grup, 'text', $unicode, $smsc);
+                                                                        _log("returns empty", 2, "sms custom");
+                                                                 }
+								_log('contact removed from group gpid:' . $gpid . ' pid:' . $c_pid . ' m:' . $mobile . ' n:' . $name . ' e:' . $email, 2, 'teltree_phonebook_edit');
+							}else{
+								_log('contact fail to remove from group gpid:' . $gpid . ' pid:' . $c_pid . ' m:' . $mobile . ' n:' . $name . ' e:' . $email, 2, 'teltree_phonebook_edit');
+							}
+					}else{
+						_log('failed '.$val . ' '. $c_pid[0]['id'], 2 , 'test');
+					}
+	
+				}
+			}
+		}
+	
+	}
+}
