@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 Plugin	: Remove keywords from incoming SMS
+=======
+Plugin	: a dummy Plugin to join via sms
+>>>>>>> 448322b7430c7e907af42962502ee76dc19b35ea
 Author	: kaka
 Release	: 0.1
 License	: Apache License 2.0
